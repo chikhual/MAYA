@@ -15,6 +15,7 @@ export default function PerfilPage() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardadoOk, setGuardadoOk] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -92,22 +93,60 @@ export default function PerfilPage() {
   async function subirFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const path = pathAvatar(user.id);
-    const { error: err } = await supabase.storage
-      .from(getBucketEvidencias())
-      .upload(path, file, { upsert: true });
-    if (err) {
-      setError(err.message);
-      return;
+    setError(null);
+    setSubiendoFoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError("Debes iniciar sesión para subir una foto.");
+        return;
+      }
+      const path = pathAvatar(user.id, file.name);
+      const { error: err } = await supabase.storage
+        .from(getBucketEvidencias())
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (err) {
+        setError(`Error al subir: ${err.message}`);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from(getBucketEvidencias()).getPublicUrl(path);
+      const urlConCache = `${urlData.publicUrl}?t=${Date.now()}`;
+      setFotoUrl(urlConCache);
+
+      // Crear o actualizar perfil con la foto
+      if (perfilId) {
+        const { error: updErr } = await supabase.from("perfiles").update({ foto_url: urlData.publicUrl }).eq("id", perfilId);
+        if (updErr) setError(`Foto subida pero no se guardó en el perfil: ${updErr.message}`);
+      } else {
+        const { data: existente } = await supabase.from("perfiles").select("id").eq("user_id", user.id).limit(1).single();
+        if (existente?.id) {
+          setPerfilId(existente.id);
+          const { error: updErr } = await supabase.from("perfiles").update({ foto_url: urlData.publicUrl }).eq("id", existente.id);
+          if (updErr) setError(`Foto subida pero no se guardó: ${updErr.message}`);
+        } else {
+          const { data: nuevo, error: insErr } = await supabase
+            .from("perfiles")
+            .insert({
+              user_id: user.id,
+              nombre: nombre || user.email?.split("@")[0] ?? "Usuario",
+              mote: mote || null,
+              club: club || "Por asignar",
+              rol: rol || "Director",
+              foto_url: urlData.publicUrl,
+            })
+            .select("id")
+            .single();
+          if (!insErr && nuevo?.id) setPerfilId(nuevo.id);
+          else if (insErr) setError(`Foto subida pero no se creó el perfil: ${insErr.message}`);
+        }
+      }
+      window.dispatchEvent(new CustomEvent("perfil-updated"));
+    } catch (ex) {
+      setError(esErrorConexion(ex) ? MSJ_CONEXION : (ex instanceof Error ? ex.message : "Error al subir la foto"));
+    } finally {
+      setSubiendoFoto(false);
+      e.target.value = "";
     }
-    const { data: urlData } = supabase.storage.from(getBucketEvidencias()).getPublicUrl(path);
-    setFotoUrl(`${urlData.publicUrl}?t=${Date.now()}`);
-    if (perfilId) {
-      await supabase.from("perfiles").update({ foto_url: urlData.publicUrl }).eq("id", perfilId);
-    }
-    e.target.value = "";
   }
 
   async function guardar() {
@@ -185,11 +224,15 @@ export default function PerfilPage() {
           <div
             role="button"
             tabIndex={0}
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-            className="relative w-[200px] h-[200px] rounded-full overflow-hidden bg-rotary-blue/10 border-4 border-slate-200 cursor-pointer flex items-center justify-center hover:ring-4 hover:ring-rotary-gold transition-all flex-shrink-0"
+            onClick={() => !subiendoFoto && fileInputRef.current?.click()}
+            onKeyDown={(e) => e.key === "Enter" && !subiendoFoto && fileInputRef.current?.click()}
+            className={`relative w-[200px] h-[200px] rounded-full overflow-hidden bg-rotary-blue/10 border-4 border-slate-200 flex items-center justify-center transition-all flex-shrink-0 ${
+              subiendoFoto ? "cursor-wait opacity-70" : "cursor-pointer hover:ring-4 hover:ring-rotary-gold"
+            }`}
           >
-            {fotoUrl ? (
+            {subiendoFoto ? (
+              <span className="text-[18px] text-rotary-blue font-semibold">Subiendo…</span>
+            ) : fotoUrl ? (
               <img src={fotoUrl} alt="Tu foto" className="w-full h-full object-cover" />
             ) : (
               <span className="text-5xl text-rotary-blue/60 font-semibold">
@@ -203,8 +246,11 @@ export default function PerfilPage() {
             accept="image/jpeg,image/jpg,image/png"
             onChange={subirFoto}
             className="hidden"
+            disabled={subiendoFoto}
           />
-          <p className="text-[18px] text-slate-600 mt-2">Haz clic en el círculo para cambiar tu fotografía</p>
+          <p className="text-[18px] text-slate-600 mt-2">
+            {subiendoFoto ? "Espera mientras se sube la foto…" : "Haz clic en el círculo para cambiar tu fotografía"}
+          </p>
         </label>
 
         <label className="block">

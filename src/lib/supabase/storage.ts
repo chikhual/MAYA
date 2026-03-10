@@ -7,9 +7,10 @@ export function getBucketEvidencias() {
   return BUCKET_EVIDENCIAS;
 }
 
-/** Path para avatar: avatars/[user_id].jpg */
-export function pathAvatar(userId: string): string {
-  return `avatars/${userId}.jpg`;
+/** Path para avatar: avatars/[user_id].[ext] */
+export function pathAvatar(userId: string, filename?: string): string {
+  const ext = filename ? (filename.match(/\.(jpe?g|png|webp)$/i)?.[1] ?? "jpg") : "jpg";
+  return `avatars/${userId}.${ext.toLowerCase()}`;
 }
 
 /**

@@ -102,14 +102,13 @@ export function Sidebar({ open = true, onClose }: SidebarProps) {
           </svg>
         </button>
       )}
-      {/* Logo */}
+      {/* Logo Rotary Campestre Aguascalientes */}
       <div className="p-4 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-lg bg-rotary-blue flex items-center justify-center text-white font-bold text-lg">
-            M
-          </div>
-          <span className="font-bold text-slate-800 text-lg">MONITOREO</span>
-        </div>
+        <img
+          src="/logo-rotary.png"
+          alt="Rotary Campestre Aguascalientes"
+          className="h-12 w-auto max-w-full object-contain"
+        />
       </div>
 
       {/* Usuario - Clic para ir a Mi Perfil */}
