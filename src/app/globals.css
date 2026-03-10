@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --rotary-blue: #17458f;
+  --rotary-gold: #f7a81b;
+  --semaforo-verde: #22c55e;
+  --semaforo-rojo: #dc2626;
+  --text-base: 18px;
+  --contrast-bg: #ffffff;
+  --contrast-text: #0f172a;
+}
+
+html {
+  font-size: var(--text-base);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-white text-slate-900 antialiased;
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+/* Mínimo 18px para accesibilidad */
+p, li, label, span, button {
+  font-size: clamp(1rem, 1.125rem, 1.25rem);
+}
+
+/* Botones de acción en tablas: pequeños pero vibrantes */
+.btn-action-verde {
+  @apply px-2.5 py-1.5 rounded text-sm font-semibold bg-semaforo-verde text-white hover:bg-semaforo-verde-oscuro;
+}
+.btn-action-azul {
+  @apply px-2.5 py-1.5 rounded text-sm font-semibold bg-rotary-blue text-white hover:bg-rotary-blue-dark;
+}
+.btn-action-rojo {
+  @apply px-2.5 py-1.5 rounded text-sm font-semibold bg-semaforo-rojo text-white hover:bg-semaforo-rojo-oscuro;
+}
